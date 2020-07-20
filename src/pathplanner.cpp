@@ -293,7 +293,7 @@ vector<Vehicle> PathPlanner::KL_Scurve_Trajectory(Vehicle start, double target_v
 	temp_vehicle.yaw = atan2(temp_vehicle.y - prev_y, temp_vehicle.x - prev_x);
 	vector<double> frenet = getFrenet(temp_vehicle.x, temp_vehicle.y, temp_vehicle.yaw, map_x, map_y);
 	temp_vehicle.s = frenet[0];
-	temp_vehicle.d = frenet[1];
+	temp_vehicle.d = (int) frenet[1];
 	path.push_back(temp_vehicle);
 
 	return path;
@@ -382,12 +382,12 @@ bool PathPlanner::isAhead(double s1, double s2, double &relative_distance)
  * @return A converted Vehicle structure
  */
 Vehicle PathPlanner::convert2Vehicle(vector<double> &raw_data)
-{		return (Vehicle) { raw_data[0], // id
+{		return (Vehicle) { (int) raw_data[0], // id
 			 raw_data[1], // x
 			 raw_data[2], // y
 			 raw_data[5], // s
 			 raw_data[6], // d
-			 raw_data[6]/4, // lane
+			 (int)raw_data[6]/4, // lane
 			 atan2(raw_data[4], raw_data[3]), // yaw
 			 sqrt(pow(raw_data[3],2) + pow(raw_data[4],2)), // v
 			 0,   // a
@@ -463,11 +463,11 @@ vector<vector<double>> PathPlanner::getAnchorPoints(bool use_current_ego)
     	ys[i] = -shift_x * sin(ref_ego.yaw) + shift_y * cos(ref_ego.yaw);
     }
 
-    if(use_current_ego)
-    {    printf("n: %d\n", xs.size());
-		for (int i=0; i<xs.size(); ++i)
-			printf("x[%d]: %f, y[%d]: %f\n", i, xs[i], i, ys[i]);
-    }
+  //   if(use_current_ego)
+  //   {    printf("n: %d\n", xs.size());
+		// for (int i=0; i<xs.size(); ++i)
+		// 	printf("x[%d]: %f, y[%d]: %f\n", i, xs[i], i, ys[i]);
+  //   }
 
     return {xs, ys};
 }
