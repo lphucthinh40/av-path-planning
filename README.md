@@ -1,7 +1,3 @@
-[//]: # (Image References)
-
-[image_0]: ./pathplanning_demo.gif "Background"
-
 ## Highway Path Planning Project :oncoming_automobile:
 Using Term-3 Simulator - Self-Driving Car Engineer Nanodegree Program 
 
@@ -55,11 +51,9 @@ Step by step on how a trajectory generator is chosen:
 
 In order to help ego-vehicle change speed quickly & efficiently without exceeding maximum jerk & acceleration, S-Curve Motion Profile is implemented in scurve.cpp. This approach makes it possible to speed up ego-vehicle from 0 to 50mph in nearly 3 seconds without violating jerk & acceleration limits.
 
-#### Demo
-Youtube Link: https://youtu.be/I3dN14Lfd8o
+### Demo
 
-<center>![alt text][image_0]</center>
-
+[![](http://img.youtube.com/vi/I3dN14Lfd8o/0.jpg)](http://www.youtube.com/watch?v=I3dN14Lfd8o "")
 
 
 
