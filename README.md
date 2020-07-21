@@ -75,7 +75,7 @@ This approach makes it possible to speed up ego-vehicle from 0 to 50mph in nearl
 
 ## Demo (Youtube)
 
-![](http://img.youtube.com/vi/I3dN14Lfd8o/0.jpg)](http://www.youtube.com/watch?v=I3dN14Lfd8o "")
+[![](http://img.youtube.com/vi/I3dN14Lfd8o/0.jpg)](http://www.youtube.com/watch?v=I3dN14Lfd8o "")
 
 
 
