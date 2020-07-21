@@ -17,15 +17,22 @@
 #include "helpers.h"
 #include "scurve.h"
 
+// PATHPLANNER CONSTANTS
 #define N_RETURN_WAYPOINTS 	50
-#define SENSOR_RANGE	    40
+#define SENSOR_RANGE	      40
+#define OPTIMAL_SPEED       21.5
+#define MIN_DISTANCE_AHEAD  20
+#define MIN_DISTANCE_BEHIND 8
+
+// CONSTRAINT CONSTANTS
 #define SPEED_LIMIT 		22.352
-#define OPTIMAL_SPEED 		21.5
 #define ACCEL_MAX 			9
-#define JERK_MAX 			9
+#define JERK_MAX 			  9
 #define TIME_STEP 			0.02
+
+// MAP CONSTANTS
 #define LANE_WIDTH 			4
-#define NUMBER_OF_LANE 		3
+#define NUMBER_OF_LANE 	3
 #define MAP_MAX_S 			6945.554
 
 using std::vector;

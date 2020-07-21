@@ -98,7 +98,7 @@ vector<Vehicle> PathPlanner::CL_Trajectory(bool change_left)
 
 	// Initialize Spline
 	tk::spline s;
-	s.set_boundary(s.first_deriv, 0, s.first_deriv, 0, false);
+	s.set_boundary(s.first_deriv, 0, s.second_deriv, 0, false);
 	s.set_points(xy_anchors[0], xy_anchors[1]);
 
 	// Generate 30 extra points to prevent premature lane-change trajectory
@@ -436,9 +436,13 @@ vector<vector<double>> PathPlanner::getAnchorPoints(bool use_current_ego)
 	ys.push_back(ref_ego.y);
 
 	// add three more future waypoints
-	vector<double> wp1 = getXY(ref_ego.s+20, ref_ego.lane*4+2, map_s, map_x, map_y);
-	vector<double> wp2 = getXY(ref_ego.s+40, ref_ego.lane*4+2, map_s, map_x, map_y);
-	vector<double> wp3 = getXY(ref_ego.s+60, ref_ego.lane*4+2, map_s, map_x, map_y);
+	double s1 = ref_ego.s+20, s2 = ref_ego.s+40, s3 = ref_ego.s+60;
+	s1 = (s1>MAP_MAX_S)? s1-MAP_MAX_S : s1;
+	s2 = (s2>MAP_MAX_S)? s2-MAP_MAX_S : s2;
+	s3 = (s3>MAP_MAX_S)? s3-MAP_MAX_S : s3;
+	vector<double> wp1 = getXY(s1, ref_ego.lane*4+2, map_s, map_x, map_y);
+	vector<double> wp2 = getXY(s2, ref_ego.lane*4+2, map_s, map_x, map_y);
+	vector<double> wp3 = getXY(s3, ref_ego.lane*4+2, map_s, map_x, map_y);
 
 	// Add them to anchor list
     xs.push_back(wp1[0]);
@@ -484,6 +488,7 @@ vector<vector<double>> PathPlanner::getLaneChangePoints(bool left_change)
 	Vehicle ref_ego;
 	Vehicle prev_ref_ego;
 	Vehicle next_ref_ego;
+	vector<double> raw_state;
 	float offset = (left_change)? -1:1;
 	// Check if proposed path is available
 	vector<double> xs;
@@ -491,28 +496,30 @@ vector<vector<double>> PathPlanner::getLaneChangePoints(bool left_change)
 
 	ref_ego = ego;
 
-	vector<double> raw_state = {0, ref_ego.x - cos(ref_ego.yaw), ref_ego.y - sin(ref_ego.yaw),
-									0,0,0,0,0,0,0, NONE};
-	prev_ref_ego = convert2Vehicle(raw_state);
+	// raw_state = {0, ref_ego.x - cos(ref_ego.yaw), ref_ego.y - sin(ref_ego.yaw),
+	// 								0,0,0,0,0,0,0, NONE};
+	// prev_ref_ego = convert2Vehicle(raw_state);
 
-	raw_state = {0, ref_ego.x + cos(ref_ego.yaw), ref_ego.y + sin(ref_ego.yaw),
+	raw_state = {0, ref_ego.x + cos(ref_ego.yaw)*ref_ego.v*TIME_STEP, ref_ego.y + sin(ref_ego.yaw)*ref_ego.v*TIME_STEP,
 									0,0,0,0,0,0,0, NONE};
 	next_ref_ego = convert2Vehicle(raw_state);
 
 	// Add both to anchor list
-	xs.push_back(prev_ref_ego.x);
+	// xs.push_back(prev_ref_ego.x);
 	xs.push_back(ref_ego.x);
 	xs.push_back(next_ref_ego.x);
-	ys.push_back(prev_ref_ego.y);
+	// ys.push_back(prev_ref_ego.y);
 	ys.push_back(ref_ego.y);
 	ys.push_back(next_ref_ego.y);
 
 	// add three more future waypoints
-	double future_s = traffic.vehicle_ahead[ref_ego.lane].s;
-	vector<double> wp1 = getXY(future_s, (ref_ego.lane+offset)*4+2, map_s, map_x, map_y);
-	vector<double> wp2 = getXY(future_s+30, (ref_ego.lane+offset)*4+2, map_s, map_x, map_y);
-	vector<double> wp3 = getXY(future_s+60, (ref_ego.lane+offset)*4+2, map_s, map_x, map_y);
-
+	double s1 = ref_ego.s+40, s2 = ref_ego.s+60, s3 = ref_ego.s+80;
+	s1 = (s1>MAP_MAX_S)? s1-MAP_MAX_S : s1;
+	s2 = (s2>MAP_MAX_S)? s2-MAP_MAX_S : s2;
+	s3 = (s3>MAP_MAX_S)? s3-MAP_MAX_S : s3;
+	vector<double> wp1 = getXY(s1, (ref_ego.lane+offset)*4+2, map_s, map_x, map_y);
+	vector<double> wp2 = getXY(s2, (ref_ego.lane+offset)*4+2, map_s, map_x, map_y);
+	vector<double> wp3 = getXY(s3, (ref_ego.lane+offset)*4+2, map_s, map_x, map_y);
 
 	// Add them to anchor list
     xs.push_back(wp1[0]);
@@ -582,17 +589,17 @@ bool PathPlanner::isLaneChangeSafe(bool left_change)
 
 	if (car_ahead)
 	{	isAhead(ego.s, traffic.vehicle_ahead[target_lane].s, rel_distance);
-		if (rel_distance<20)
+		if (rel_distance<MIN_DISTANCE_AHEAD)
 			return false;
 		if (car_behind)
 		{	isAhead(ego.s, traffic.vehicle_behind[target_lane].s, rel_distance);
-			if (rel_distance<8)	return false;
+			if (rel_distance<MIN_DISTANCE_BEHIND)	return false;
 			else 					return true;
 		}
 	}
 	else if (car_behind)
 	{	isAhead(ego.s, traffic.vehicle_behind[target_lane].s, rel_distance);
-		if (rel_distance<8)		return false;
+		if (rel_distance<MIN_DISTANCE_BEHIND)		return false;
 		else 						return true;
 	}
 
