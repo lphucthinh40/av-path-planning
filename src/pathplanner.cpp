@@ -500,7 +500,7 @@ vector<vector<double>> PathPlanner::getLaneChangePoints(bool left_change)
 	// 								0,0,0,0,0,0,0, NONE};
 	// prev_ref_ego = convert2Vehicle(raw_state);
 
-	raw_state = {0, ref_ego.x + cos(ref_ego.yaw)*ref_ego.v*TIME_STEP, ref_ego.y + sin(ref_ego.yaw)*ref_ego.v*TIME_STEP,
+	raw_state = {0, ref_ego.x + cos(ref_ego.yaw)*ref_ego.v*TIME_STEP*2, ref_ego.y + sin(ref_ego.yaw)*ref_ego.v*TIME_STEP*2,
 									0,0,0,0,0,0,0, NONE};
 	next_ref_ego = convert2Vehicle(raw_state);
 
