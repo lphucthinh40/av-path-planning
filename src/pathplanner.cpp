@@ -34,6 +34,19 @@ void PathPlanner::update(Vehicle &ego_vehicle, vector<vector<double>> &sensor_da
 		ego.st = proposed_path[0].st;
 	}
 
+	double curvature=0;
+	if (proposed_path.size()>3)
+	{
+		double prev_dx = (proposed_path[1].x - proposed_path[0].x) / TIME_STEP;
+		double dx = (proposed_path[2].x - proposed_path[1].x) / TIME_STEP;
+		double prev_dy = (proposed_path[1].y - proposed_path[0].y) / TIME_STEP; 
+		double dy = (proposed_path[2].y - proposed_path[1].y) / TIME_STEP;
+		double dxx = (dx - prev_dx) / TIME_STEP;
+		double dyy = (dy - prev_dy) / TIME_STEP;
+		curvature = abs(dx*dyy-dy*dxx) / pow(pow(dx,2)+pow(dy,2), 1.5);
+		printf("curvature: %f\n", curvature);
+	}
+	
 	// check if ego is in the best lane
 	int best_lane = getBestLane();
 
@@ -42,14 +55,20 @@ void PathPlanner::update(Vehicle &ego_vehicle, vector<vector<double>> &sensor_da
 		counter = (counter+1) % 50;
 
 	// lane change right
-	if ((ego.lane < best_lane) && (ego.st == CS) && isLaneChangeSafe(false) && (counter==0))
+	if ((ego.lane < best_lane) && (ego.st == CS) 
+		 && isLaneChangeSafe(false) && (curvature < CURVATURE_THRESHOLD)
+		 && (counter==0))
 	{
+		printf("Lane-change path generated\n");
 		proposed_path = CL_Trajectory(false);
 		counter++;
 	}
 	// lane change left
-	else if ((ego.lane > best_lane) && (ego.st == CS) && isLaneChangeSafe(true) && (counter==0))
+	else if ((ego.lane > best_lane) && (ego.st == CS) 
+				&& isLaneChangeSafe(true) && (curvature < CURVATURE_THRESHOLD)
+				&& (counter==0))
 	{
+		printf("Lane-change path generated\n");
 		proposed_path = CL_Trajectory(true);
 		counter++;
 	}
@@ -92,6 +111,7 @@ vector<Vehicle> PathPlanner::CL_Trajectory(bool change_left)
 	temp_vehicle.d = ego.lane*4+2;
 	double prev_x = ego.x;
 	double prev_y = ego.y;
+	// double target_d = (change_left)? temp_vehicle.d-4 : temp_vehicle.d+4;
 
 	// Generate reference points for Spline
 	vector<vector<double>> xy_anchors = getLaneChangePoints(change_left);
@@ -101,8 +121,9 @@ vector<Vehicle> PathPlanner::CL_Trajectory(bool change_left)
 	s.set_boundary(s.first_deriv, 0, s.second_deriv, 0, false);
 	s.set_points(xy_anchors[0], xy_anchors[1]);
 
-	// Generate 30 extra points to prevent premature lane-change trajectory
-	 for (int i=1; i<=path_return_size+30; ++i)
+	// Generate 40 extra points to prevent premature lane-change trajectory
+
+	for (int i=1; i<=path_return_size+40; ++i)
 	{
 		// x & y in vehicle coordinates
     	ego_coor_x = i*TIME_STEP*ego.v;
@@ -151,7 +172,10 @@ vector<Vehicle> PathPlanner::KL_Trajectory()
 	// check if there is a vehicle ahead. If so, match up its speed.
 	// otherwise, maintain OPTIMAL_SPEED as often as possible
 	if (traffic.vehicle_ahead[ref_vehicle.lane].id != -1)
-	{	target_speed = traffic.vehicle_ahead[ref_vehicle.lane].v;
+	{	
+		double distance = getRelativeDistance(ref_vehicle.s, traffic.vehicle_ahead[ref_vehicle.lane].s);
+		if (distance < SPEED_CHANGE_DISTANCE)
+			target_speed = traffic.vehicle_ahead[ref_vehicle.lane].v;
 	}
 	else
 		target_speed = OPTIMAL_SPEED;
@@ -376,6 +400,31 @@ bool PathPlanner::isAhead(double s1, double s2, double &relative_distance)
 }
 
 /**
+ * Return the relative distance between two vehicles
+ * 
+ * @param s1 longitude of vehicle 1 in Frenet
+ * @param s2 longitude of vehicle 2 in Frenet
+ * @return relative_distance(via pass-by-reference) relative distance between s1 to s2 (always positive)
+ */
+double PathPlanner::getRelativeDistance(double s1, double s2)
+{ 
+  double ahead_distance, behind_distance;
+  if (s2>=s1)
+  {	ahead_distance = s2 - s1;
+	behind_distance = MAP_MAX_S - ahead_distance;
+  }
+  else
+  { behind_distance = s1 - s2;
+	ahead_distance = MAP_MAX_S - behind_distance;
+  }
+
+  if (ahead_distance <= behind_distance)
+	return ahead_distance;
+  else
+ 	return behind_distance;
+}
+
+/**
  * Convert a vector<double> to Vehicle structure
  *
  * @param raw_data a vector<double> that stores vehicle state
@@ -594,13 +643,19 @@ bool PathPlanner::isLaneChangeSafe(bool left_change)
 		if (car_behind)
 		{	isAhead(ego.s, traffic.vehicle_behind[target_lane].s, rel_distance);
 			if (rel_distance<MIN_DISTANCE_BEHIND)	return false;
-			else 					return true;
+			else if (traffic.vehicle_behind[target_lane].v > ego.v + MAX_SPEED_DIFFERENCE)
+													return false;
+			else
+				return true;
 		}
 	}
 	else if (car_behind)
 	{	isAhead(ego.s, traffic.vehicle_behind[target_lane].s, rel_distance);
 		if (rel_distance<MIN_DISTANCE_BEHIND)		return false;
-		else 						return true;
+		else if (traffic.vehicle_behind[target_lane].v > ego.v + MAX_SPEED_DIFFERENCE)
+													return false;
+		else 
+			return true;
 	}
 
 	return true;

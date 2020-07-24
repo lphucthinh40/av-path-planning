@@ -19,10 +19,13 @@
 
 // PATHPLANNER CONSTANTS
 #define N_RETURN_WAYPOINTS 	50
-#define SENSOR_RANGE	      40
+#define SENSOR_RANGE	      50
 #define OPTIMAL_SPEED       21.5
-#define MIN_DISTANCE_AHEAD  20
-#define MIN_DISTANCE_BEHIND 8
+#define MIN_DISTANCE_AHEAD  30
+#define MIN_DISTANCE_BEHIND 10
+#define MAX_SPEED_DIFFERENCE 3
+#define SPEED_CHANGE_DISTANCE 40
+#define CURVATURE_THRESHOLD 0.007
 
 // CONSTRAINT CONSTANTS
 #define SPEED_LIMIT 		22.352
@@ -86,6 +89,7 @@ class PathPlanner {
   // Helper Functions
   Traffic getTrafficReport(vector<vector<double>> &sensor_data);
   bool isAhead(double s1, double s2, double &relative_distance);
+  double getRelativeDistance(double s1, double s2);
   Vehicle convert2Vehicle(vector<double> &raw_data);
   vector<vector<double>> getAnchorPoints(bool use_current_ego=false);
   vector<vector<double>> getLaneChangePoints(bool left_change);

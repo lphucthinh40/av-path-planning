@@ -56,14 +56,18 @@ How a trajectory generator is chosen:
     + If ego's current speed matches with target speed, **KL_Constant_Trajectory** is used internally.
     + Otherwise, **KL_Scurve_Trajectory** is used internally to adjust ego's speed to target_speed.
 
-For **isLaneChangeSafe()**, lane change is considered safe when the vehicle ahead & behind (in target lane) is at least 20 meters & 8 meters away from ego-vehicle, respectively.
+For **isLaneChangeSafe()**, lane change is considered safe when the vehicle ahead & behind (in target lane) is at least 30 meters & 20 meters away from ego-vehicle, respectively.
 
 For **getBestLane()**, the best lane is determined as follow:
-
 - If current lane is clear, current lane is the best lane.
 - If current lane is blocked, check all three lanes from left to right. If a lane is clear, that lane is the best lane (left change is prioritized).
 - If all three lanes are blocked, lane that has the highest speed is the best lane.
 
+24/07/2020 UPDATES:
+
++ Increase sensor range to 50 meters.
++ Adjust safety distances for lane change to be 30 meters for vehicle ahead & 20 meters for vehicle behind (in target lane).
++ Current path curvature is calculated in every time step. Ego-vehicle is now less likely to change lane in the curvy section of the road. Curvature formula is based on https://en.wikipedia.org/wiki/Curvature .
 
 ### 3. Motion Profile Generator
 
