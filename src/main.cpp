@@ -106,7 +106,7 @@ int main() {
 
           // Update ego's current status
           Vehicle new_ego = (Vehicle){ 0,
-							  car_x, car_y, car_s, car_d, (int)car_d/4,
+							  car_x, car_y, car_s, car_d, (int)(car_d/4),
 							  deg2rad(car_yaw), car_speed/2.237, // convert speed from mph to ms
 							  0, 0, State::NONE }; // a, j, state (planner will update these internally)
           int n_consumed = N_RETURN_WAYPOINTS - previous_path_x.size();

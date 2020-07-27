@@ -32,6 +32,7 @@ void PathPlanner::update(Vehicle &ego_vehicle, vector<vector<double>> &sensor_da
 	{
 		proposed_path.erase(proposed_path.begin(), proposed_path.begin() + n_consumed_waypoints);
 		ego.st = proposed_path[0].st;
+		printf("v: %f | a: %f\n", proposed_path[0].v, proposed_path[0].a);
 	}
 
 	double curvature=0;
@@ -46,6 +47,7 @@ void PathPlanner::update(Vehicle &ego_vehicle, vector<vector<double>> &sensor_da
 		curvature = abs(dx*dyy-dy*dxx) / pow(pow(dx,2)+pow(dy,2), 1.5);
 		printf("curvature: %f\n", curvature);
 	}
+
 	
 	// check if ego is in the best lane
 	int best_lane = getBestLane();
@@ -59,7 +61,7 @@ void PathPlanner::update(Vehicle &ego_vehicle, vector<vector<double>> &sensor_da
 		 && isLaneChangeSafe(false) && (curvature < CURVATURE_THRESHOLD)
 		 && (counter==0))
 	{
-		printf("Lane-change path generated\n");
+		printf("Lane-change path generated");
 		proposed_path = CL_Trajectory(false);
 		counter++;
 	}
@@ -68,7 +70,7 @@ void PathPlanner::update(Vehicle &ego_vehicle, vector<vector<double>> &sensor_da
 				&& isLaneChangeSafe(true) && (curvature < CURVATURE_THRESHOLD)
 				&& (counter==0))
 	{
-		printf("Lane-change path generated\n");
+		printf("Lane-change path generated");
 		proposed_path = CL_Trajectory(true);
 		counter++;
 	}
@@ -103,7 +105,8 @@ vector<vector<double>> PathPlanner::getPath()
  */
 vector<Vehicle> PathPlanner::CL_Trajectory(bool change_left)
 {
-	double ego_coor_x, ego_coor_y;
+	double ego_coor_x = 0;
+	double ego_coor_y;
 	vector<Vehicle> path;
 	Vehicle temp_vehicle = ego;
 	temp_vehicle.st = (change_left)? LCL: LCR;
@@ -121,12 +124,14 @@ vector<Vehicle> PathPlanner::CL_Trajectory(bool change_left)
 	s.set_boundary(s.first_deriv, 0, s.second_deriv, 0, false);
 	s.set_points(xy_anchors[0], xy_anchors[1]);
 
-	// Generate 40 extra points to prevent premature lane-change trajectory
-
-	for (int i=1; i<=path_return_size+40; ++i)
-	{
-		// x & y in vehicle coordinates
-    	ego_coor_x = i*TIME_STEP*ego.v;
+	// Generate 30 extra points to prevent premature lane-change trajectory
+	int counter = 0;
+	int i = 1;
+	double target_d = (change_left)? (ego.lane-1)*4 + 2 : (ego.lane+1)*4 + 2;
+	while (counter < 2)
+	{	// x & y in vehicle coordinates
+    	ego_coor_x += TIME_STEP*ego.v*cos(temp_vehicle.yaw-ego.yaw);
+    	// ego_coor_x = i*TIME_STEP*ego.v;
     	ego_coor_y = s(ego_coor_x);
     	// x & y in world coordinates
 		temp_vehicle.x = ego_coor_x * cos(ego.yaw) - ego_coor_y * sin(ego.yaw) + ego.x;
@@ -137,7 +142,7 @@ vector<Vehicle> PathPlanner::CL_Trajectory(bool change_left)
 		vector<double> frenet = getFrenet(temp_vehicle.x, temp_vehicle.y, temp_vehicle.yaw, map_x, map_y);
 		temp_vehicle.s = frenet[0];
 		temp_vehicle.d = frenet[1];
-		temp_vehicle.lane = temp_vehicle.d / 4;
+		temp_vehicle.lane = int(temp_vehicle.d / 4);
 
 		// add to path
 		path.push_back(temp_vehicle);
@@ -145,7 +150,12 @@ vector<Vehicle> PathPlanner::CL_Trajectory(bool change_left)
 		// update prev_x, prev_y for calculating yaw
 		prev_x = temp_vehicle.x;
 		prev_y = temp_vehicle.y;
+
+		i++;
+		if (abs(temp_vehicle.d - target_d) <= 0.25)
+			counter++;
 	}
+	printf("| n: %d\n", (int) path.size());
 	return path;
 }
 
@@ -175,7 +185,10 @@ vector<Vehicle> PathPlanner::KL_Trajectory()
 	{	
 		double distance = getRelativeDistance(ref_vehicle.s, traffic.vehicle_ahead[ref_vehicle.lane].s);
 		if (distance < SPEED_CHANGE_DISTANCE)
-			target_speed = traffic.vehicle_ahead[ref_vehicle.lane].v;
+			if (distance < SAFETY_DISTANCE)
+				target_speed = std::max(0., traffic.vehicle_ahead[ref_vehicle.lane].v - 2);
+			else
+				target_speed = traffic.vehicle_ahead[ref_vehicle.lane].v;
 	}
 	else
 		target_speed = OPTIMAL_SPEED;
@@ -185,8 +198,10 @@ vector<Vehicle> PathPlanner::KL_Trajectory()
 	{
 		// use constant speed projection if current speed matches target speed.
 		// otherwise, use scurve projection to change speed
-		if ((abs(ref_vehicle.v-target_speed)<1.0))
-		{	ref_vehicle.v = target_speed;
+		if (abs(ref_vehicle.v-target_speed) <= 0.4)
+		{	
+			if (abs(ref_vehicle.v-target_speed) <= TIME_STEP*ACCEL_MAX)
+				ref_vehicle.v = target_speed;
 			added_path =  KL_Constant_Trajectory(ref_vehicle, path_return_size - n);
 		}
 		else
@@ -209,7 +224,8 @@ vector<Vehicle> PathPlanner::KL_Trajectory()
  */
 vector<Vehicle> PathPlanner::KL_Constant_Trajectory(Vehicle start, int n_timestep)
 {
-	double ego_coor_x, ego_coor_y;
+	double ego_coor_x = 0;
+	double ego_coor_y;
 	vector<Vehicle> path;
 	Vehicle temp_vehicle = start;
 	temp_vehicle.st = State::CS;
@@ -228,7 +244,8 @@ vector<Vehicle> PathPlanner::KL_Constant_Trajectory(Vehicle start, int n_timeste
     for (int i=1; i<=n_timestep; ++i)
 	{
     	// x, y in vehicle coordinates
-    	ego_coor_x = i*TIME_STEP*start.v;
+    	ego_coor_x += TIME_STEP*start.v*cos(temp_vehicle.yaw - start.yaw);
+    	// ego_coor_x = i*TIME_STEP*start.v;
     	ego_coor_y = s(ego_coor_x);
 		// x, y in world coordinates
 		temp_vehicle.x = ego_coor_x * cos(start.yaw) - ego_coor_y * sin(start.yaw) + start.x;
@@ -259,7 +276,8 @@ vector<Vehicle> PathPlanner::KL_Constant_Trajectory(Vehicle start, int n_timeste
  */
 vector<Vehicle> PathPlanner::KL_Scurve_Trajectory(Vehicle start, double target_v)
 {
-	double ego_coor_x, ego_coor_y;
+	double ego_coor_x=0;
+	double ego_coor_y;
 	double t=0;
 	vector<Vehicle> path;
 	Vehicle temp_vehicle = start;
@@ -280,12 +298,10 @@ vector<Vehicle> PathPlanner::KL_Scurve_Trajectory(Vehicle start, double target_v
 	s.set_points(xy_anchors[0], xy_anchors[1]);
 
 	// scg.T is the time it takes to reach target speed
-	while (t<=scg.T-TIME_STEP)
+	while (t<=scg.T)
 	{
-		t += TIME_STEP;
-
 		// x, y in vehicle coordinates
-		ego_coor_x = scg.s(t);
+		ego_coor_x += TIME_STEP*scg.v(t)*cos(temp_vehicle.yaw - start.yaw);
 		ego_coor_y = s(ego_coor_x);
 
 		// x, y in world coordinates
@@ -305,12 +321,14 @@ vector<Vehicle> PathPlanner::KL_Scurve_Trajectory(Vehicle start, double target_v
 		// update prev_x, prev_y for calculating yaw
 		prev_x = temp_vehicle.x;
 		prev_y = temp_vehicle.y;
+
+		t += TIME_STEP;
 	}
 
 	// add an extra timestep where target_speed is already reached and acceleration becomes zero
 	temp_vehicle.v = scg.vs;
 	temp_vehicle.a = 0;
-	ego_coor_x = ego_coor_x + temp_vehicle.v*TIME_STEP;
+	ego_coor_x += TIME_STEP*temp_vehicle.v*cos(temp_vehicle.yaw - start.yaw);
 	ego_coor_y = s(ego_coor_x);
 	temp_vehicle.x = ego_coor_x * cos(start.yaw) - ego_coor_y * sin(start.yaw) + start.x;
 	temp_vehicle.y = ego_coor_x * sin(start.yaw) + ego_coor_y * cos(start.yaw) + start.y;
@@ -436,7 +454,7 @@ Vehicle PathPlanner::convert2Vehicle(vector<double> &raw_data)
 			 raw_data[2], // y
 			 raw_data[5], // s
 			 raw_data[6], // d
-			 (int)raw_data[6]/4, // lane
+			 (int)(raw_data[6]/4), // lane
 			 atan2(raw_data[4], raw_data[3]), // yaw
 			 sqrt(pow(raw_data[3],2) + pow(raw_data[4],2)), // v
 			 0,   // a

@@ -69,6 +69,12 @@ For **getBestLane()**, the best lane is determined as follow:
 + Adjust safety distances for lane change to be 30 meters for vehicle ahead & 20 meters for vehicle behind (in target lane).
 + Current path curvature is calculated in every time step. Ego-vehicle is now less likely to change lane in the curvy section of the road. Curvature formula is based on https://en.wikipedia.org/wiki/Curvature .
 
+27/07/2020 UPDATES:
+
++ Adjust safety distances for lane change to be 50 meters for vehicle ahead & 25 meters for vehicle behind (in target lane).
++ There is now a mechanism for ego-vehicle to slow down more when it is too close to the vehicle ahead (instead of simply matching its speed).
++ Fix bugs in S-Scurve Motion Profile, which allows for smoother speed transition.
+
 ### 3. Motion Profile Generator
 
 In order to help ego-vehicle change speed quickly & efficiently without exceeding maximum jerk & acceleration, S-Curve Motion Profile is implemented in scurve.cpp. SCurve is initialized with initial speed, target speed, acceleration & jerk limit. It generates a motion profile for adjusting speed, maximizing the period where the vehicle is at acceleration limit without violating jerk limit. 'SCurve.T' gives us the period of speed change. Displacement, velocity, and acceleration can be calculated at any given time within this period using 'Scurve.s(t)', 'Scurve.v(t)', 'Scurve.a(t)' respectively. My implementation is based on "CONSTANT JERK EQUATIONS FOR A TRAJECTORY GENERATOR" BYU.EDU lecture note (http://www.et.byu.edu/~ered/ME537/Notes/Ch5.pdf).

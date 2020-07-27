@@ -11,14 +11,15 @@ SCurveGenerator::SCurveGenerator(double in_v0, double in_vs, double in_as, doubl
 	a_s   = (delta_v>0)? in_as: (-in_as);
 	j_max = (delta_v>0)? in_jmax: (-in_jmax);
 
-	if (abs(delta_v)<=abs(a_s))
-	{
-		T = 2.0*abs(delta_v/a_s);
-		j_max = 2.0*a_s/T;
-		t1 = T/2.0;
-		v1 = (v0+vs)/2.0;
-		v2 = v1;
-	}
+	if (abs(delta_v)<=abs(a_s*a_s/j_max))
+    {
+        a_s = sqrt(j_max * delta_v);
+        a_s = (delta_v>0)? a_s : -a_s;
+        T = 2.0 * abs(a_s / j_max);
+        t1 = T/2.0;
+        v1 = (v0+vs)/2.0;
+        v2 = v1;
+    }
 	else
 	{
         t1 = a_s/j_max;
